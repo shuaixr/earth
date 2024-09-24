@@ -30,21 +30,22 @@ const Globe = ({ rotate }) => {
     </mesh>
   )
 }
-
 const TechyGrid = ({ rotate }) => {
   const gridRef = useRef()
   const [time, setTime] = useState(0)
 
   const geometry = useMemo(() => {
-    const geo = new THREE.SphereGeometry(2.1, 32, 32)
+    const geo = new THREE.IcosahedronGeometry(2.1, 4) // ?????????
     const pos = geo.attributes.position
     const vec = new THREE.Vector3()
+
     for (let i = 0; i < pos.count; i++) {
       vec.fromBufferAttribute(pos, i)
-      const noise = (Math.random() - 0.5) * 0.1
+      const noise = (Math.random() - 0.5) * 0.25
       vec.normalize().multiplyScalar(2.1 + noise)
       pos.setXYZ(i, vec.x, vec.y, vec.z)
     }
+
     return geo
   }, [])
 
@@ -60,20 +61,32 @@ const TechyGrid = ({ rotate }) => {
         color: { value: new THREE.Color('purple') },
       },
       vertexShader: `
-        varying vec2 vUv;
+        varying vec3 vPosition;
         void main() {
-          vUv = uv;
+          vPosition = position;  // ?????????????
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
       fragmentShader: `
         uniform float time;
         uniform vec3 color;
-        varying vec2 vUv;
+        varying vec3 vPosition;
         void main() {
-          float wave = sin(vUv.x * 20.0 - time * 2.0) * 0.2 + 0.1;
+          // ???????????
+          float modTime = mod(time, 5.0); // ?????????? 5 ?
+          
+          // ???????linearly ??? y = -2.1 ??? y = 2.1
+          float wavePosition = mix(-2.1, 2.1, modTime / 5.0);
 
+          // ????? y ?????????
+          float distance = abs(vPosition.y - wavePosition);
+
+          // ????????
+          float wave = smoothstep(0.1, 0.3, 0.3 - distance);
+
+          // ?????????????
           vec3 finalColor = mix(color, vec3(1.0), wave);
+
           gl_FragColor = vec4(finalColor, 0.7);
         }
       `,
